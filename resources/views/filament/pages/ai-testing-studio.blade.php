@@ -4,7 +4,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
 
-    <!-- grid-cols-1 md:grid-cols-2 dengan items-start agar panel kanan tidak dipaksa memanjang ke bawah -->
+    <!-- WRAPPER UTAMA: Dikunci tingginya agar pas 1 layar dan tidak ada scrollbar -->
     <div x-data="aiTestingComponent()" x-init="initAi()" class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         
         <!-- BAGIAN KIRI: SENSOR KAMERA -->
@@ -28,7 +28,7 @@
             </div>
         </x-filament::section>
 
-        <!-- BAGIAN KANAN: OUTPUT ANALISIS (Dibuat Kompak dan Fit-Content) -->
+        <!-- BAGIAN KANAN: SISTEM ANALISIS -->
         <x-filament::section>
             <x-slot name="heading">
                 Sistem Analisis Prediksi
@@ -37,7 +37,6 @@
                 Output identifikasi real-time.
             </x-slot>
 
-            <!-- Padding proporsional, tanpa paksaan tinggi 380px -->
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem;">
                 <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Huruf Terdeteksi</div>
                 
@@ -74,7 +73,7 @@
                     try {
                         // Fase 1: Memuat Model
                         this.statusText = 'MENGUNDUH FILE MODEL.JSON...';
-                        const model = await tf.loadLayersModel('/ai-models/model.json?v=' + new Date().getTime());
+                        const model = await tf.loadLayersModel('/ai-models/abjad/model.json?v=' + new Date().getTime());
                         
                         // Fase 2: Memuat Sensor MediaPipe
                         this.statusText = 'MEMUAT SENSOR TRACKING JARI...';

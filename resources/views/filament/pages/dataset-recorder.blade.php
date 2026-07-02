@@ -3,16 +3,13 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
 
-    <!-- WRAPPER UTAMA: Dikunci tingginya agar pas 1 layar dan tidak ada scrollbar -->
     <div x-data="datasetRecorderComponent()" x-init="initRecorder()" style="height: calc(100vh - 220px); min-height: 550px;" class="flex flex-col lg:flex-row gap-6 w-full">
         
-        <!-- ========================================== -->
         <!-- KOLOM KIRI (1:1 / 50% Lebar): KAMERA FULL  -->
-        <!-- ========================================== -->
         <div class="w-full lg:w-1/2 h-full rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-4 flex flex-col">
             <div class="relative w-full h-full overflow-hidden rounded-lg bg-black ring-1 ring-gray-950/10 dark:ring-white/20 shadow-inner flex-1">
                 
-                <!-- Video Element (object-cover agar mengisi kotak tanpa gepeng) -->
+                <!-- KAMERA -->
                 <video id="webcam" autoplay playsinline class="absolute inset-0 w-full h-full object-cover transform -scale-x-100"></video>
                 <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover z-10 transform -scale-x-100"></canvas>
                 
@@ -24,12 +21,10 @@
             </div>
         </div>
 
-        <!-- ========================================== -->
         <!-- KOLOM KANAN (1:1 / 50% Lebar): FORM & STATUS -->
-        <!-- ========================================== -->
         <div class="w-full lg:w-1/2 h-full flex flex-col gap-6">
             
-            <!-- KANAN ATAS: FORM KONTROL -->
+            <!-- FORM -->
             <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-6 flex-shrink-0">
                 <div class="space-y-5">
                     <div>
@@ -64,7 +59,7 @@
                 </div>
             </div>
 
-            <!-- KANAN BAWAH: STATUS PEREKAMAN (Mengisi sisa tinggi secara otomatis) -->
+            <!-- STATUS -->
             <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-6 flex-1 flex flex-col justify-between">
                 <div>
                     <h3 class="text-base font-semibold leading-6 text-gray-950 dark:text-white">Status Perekaman Data Studio</h3>
@@ -103,7 +98,7 @@
                     
                     const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
                     
-                    // Definisikan opsi untuk kamera dan tangan
+                    // Setelan Hands API
                     hands.setOptions({ 
                         maxNumHands: 2, 
                         modelComplexity: 1, 
@@ -118,17 +113,17 @@
                         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                             this.handDetected = true;
                             
-                            // Loop melalui setiap tangan yang terdeteksi dan gambar konektor serta landmark
+                            // Gambar tangan di canvas
                             for (const landmarks of results.multiHandLandmarks) {
                                 drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#000000', lineWidth: 2});
                                 drawLandmarks(canvasCtx, landmarks, {color: '#FFFFFF', lineWidth: 1, radius: 2});
                             }
                             
-                            // Kirim data ke backend jika sedang merekam dan sudah lewat 500ms sejak terakhir kali disimpan
+                            // Jika sedang merekam dan sudah lewat 500ms sejak terakhir disimpan, simpan data koordinat tangan ke backend
                             if (this.isRecording && Date.now() - this.lastSavedTime >= 500) {
                                 this.lastSavedTime = Date.now();
                                 
-                                // Kirim koordinat (sekarang mengirimkan seluruh array tangan yang terdeteksi)
+                                // Kirim data ke backend Livewire
                                 this.$wire.dispatch('save-dataset-record', { 
                                     label: this.selectedLabel, 
                                     type: this.gestureType, 

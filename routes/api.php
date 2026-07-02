@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ModuleController;
+use App\Http\Controllers\API\v1\StudentProgressController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,4 +20,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::prefix('v1')->group(function () {
     Route::get('/modules', [ModuleController::class, 'index']);
     Route::get('/modules/{id}', [ModuleController::class, 'show']);
+    Route::post('/progress', [StudentProgressController::class, 'recordProgress']);
 });
