@@ -12,30 +12,37 @@ use Carbon\Carbon;
 class EducatorController extends Controller
 {
     /**
-     * 1. Mengambil Data Dashboard (Daftar Murid & Riwayat Tugas)
+     * Retrieve the educator's dashboard overview.
+     * Includes the list of students within the same institution and assignment history.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
     {
         $teacher = $request->user();
 
-        // Mengambil daftar murid HANYA dari instansi/kelas yang sama dengan guru
+        // Fetch students strictly bound to the educator's institution
         $students = User::where('role', 'student')
-                        ->where('institution', $teacher->institution)
-                        ->select('id', 'name', 'institution as class')
-                        ->get()
-                        ->map(function($student) {
-                            $words = explode(' ', $student->name);
-                            $initials = strtoupper(substr($words[0], 0, 1) . (isset($words[1]) ? substr($words[1], 0, 1) : ''));
-                            return [
-                                'id' => $student->id,
-                                'name' => $student->name,
-                                'class' => $student->class ?? 'Siswa',
-                                'initials' => $initials
-                            ];
-                        });
+            ->where('institution', $teacher->institution)
+            ->select('id', 'name', 'email', 'institution as class') // FIXED: Added 'email'
+            ->get()
+            ->map(function($student) {
+                $words = explode(' ', $student->name);
+                $initials = strtoupper(substr($words[0], 0, 1) . (isset($words[1]) ? substr($words[1], 0, 1) : ''));
+                
+                return [
+                    'id' => $student->id,
+                    'name' => $student->name,
+                    'email' => $student->email, // FIXED: Now properly mapped to Frontend
+                    'class' => $student->class ?? 'Siswa',
+                    'initials' => $initials
+                ];
+            });
 
-        // Mengambil riwayat tugas beserta kolom stars_earned dan feedback
         $assignments = [];
+        
+        // Fetch assignment history including evaluation metrics
         if (\Illuminate\Support\Facades\Schema::hasTable('assignments')) {
             $assignments = DB::table('assignments')
                 ->join('users', 'assignments.student_id', '=', 'users.id')
@@ -51,8 +58,8 @@ class EducatorController extends Controller
                         'target' => $task->target,
                         'notes' => $task->notes,
                         'status' => $task->status,
-                        'stars_earned' => $task->stars_earned, // Kolom baru
-                        'feedback' => $task->feedback,         // Kolom baru
+                        'stars_earned' => $task->stars_earned,
+                        'feedback' => $task->feedback,
                         'date' => Carbon::parse($task->created_at)->locale('id')->translatedFormat('d M Y')
                     ];
                 });
@@ -68,7 +75,10 @@ class EducatorController extends Controller
     }
 
     /**
-     * 2. Mendelegasikan Tugas Baru ke Murid
+     * Delegate a new learning module/assignment to a specific student.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
@@ -94,12 +104,15 @@ class EducatorController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Tugas berhasil didelegasikan.'
+            'message' => 'Assignment delegated successfully.'
         ], 201);
     }
 
     /**
-     * 3. Menambahkan Murid Baru (Fitur Manajemen Murid)
+     * Register a new student credential bound to the educator's institution.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function storeStudent(Request $request)
     {
@@ -112,7 +125,7 @@ class EducatorController extends Controller
         ]);
 
         try {
-            $student = User::create([
+            User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
@@ -123,37 +136,119 @@ class EducatorController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Murid baru berhasil didaftarkan.'
+                'message' => 'Student credential registered successfully.'
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal mendaftarkan murid. Silakan coba lagi.'
+                'message' => 'Failed to register student credential.'
             ], 500);
         }
     }
 
     /**
-     * 4. Memberikan Penilaian & Bintang (Evaluasi Guru)
+     * Update an existing student's credentials.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateStudent(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $id,
+            'password' => 'nullable|min:6'
+        ]);
+
+        try {
+            $student = User::where('id', $id)->where('role', 'student')->firstOrFail();
+            
+            $updateData = [
+                'name' => $request->name,
+                'email' => $request->email,
+            ];
+
+            if ($request->filled('password')) {
+                $updateData['password'] = Hash::make($request->password);
+            }
+
+            $student->update($updateData);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Student profile updated successfully.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Failed to update student data.'], 500);
+        }
+    }
+
+    /**
+     * Remove a single student's access.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroyStudent($id)
+    {
+        try {
+            $student = User::where('id', $id)->where('role', 'student')->firstOrFail();
+            $student->delete();
+
+            return response()->json(['status' => 'success', 'message' => 'Student access removed.'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Failed to remove student.'], 500);
+        }
+    }
+
+    /**
+     * Perform a bulk deletion of selected students.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkDestroyStudents(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:users,id'
+        ]);
+
+        try {
+            User::whereIn('id', $request->ids)->where('role', 'student')->delete();
+
+            return response()->json(['status' => 'success', 'message' => 'Selected students have been removed.'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Failed to execute bulk deletion.'], 500);
+        }
+    }
+
+    /**
+     * Evaluate an assignment and award stars to the student.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
     public function evaluateTask(Request $request, $id)
     {
         $teacher = $request->user();
 
         $request->validate([
-            'stars_earned' => 'required|integer|min:1|max:50', // Batas maksimal bintang yang bisa diberikan
+            'stars_earned' => 'required|integer|min:1|max:50',
             'feedback' => 'nullable|string'
         ]);
 
-        // Cek apakah tugas dengan ID tersebut milik guru
+        // Verify ownership and existence
         $assignment = DB::table('assignments')->where('id', $id)->where('teacher_id', $teacher->id)->first();
 
         if (!$assignment) {
-            return response()->json(['status' => 'error', 'message' => 'Tugas tidak ditemukan.'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Assignment not found.'], 404);
         }
 
-        if ($assignment->status === 'Selesai Dinilai') {
-            return response()->json(['status' => 'error', 'message' => 'Tugas ini sudah dinilai.'], 400);
+        if (strtolower($assignment->status) === 'selesai dinilai' || strtolower($assignment->status) === 'evaluated') {
+            return response()->json(['status' => 'error', 'message' => 'Assignment has already been evaluated.'], 400);
         }
 
         DB::beginTransaction();
@@ -165,19 +260,19 @@ class EducatorController extends Controller
                 'updated_at' => now()
             ]);
 
-            // Tambahkan bintang langsung ke total bintang milik murid tersebut
+            // Increment the student's total stars based on evaluation
             User::where('id', $assignment->student_id)->increment('stars', $request->stars_earned);
 
             DB::commit();
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Tugas berhasil dinilai dan poin bintang telah dikirim ke murid!'
+                'message' => 'Evaluation submitted and stars awarded successfully.'
             ], 200);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['status' => 'error', 'message' => 'Gagal menyimpan penilaian.'], 500);
+            return response()->json(['status' => 'error', 'message' => 'Failed to save evaluation.'], 500);
         }
     }
 }

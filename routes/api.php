@@ -56,6 +56,11 @@ Route::prefix('v1')->group(function () {
         Route::get('/educator/dashboard', [\App\Http\Controllers\API\v1\EducatorController::class, 'index']);
         Route::post('/educator/assignments', [\App\Http\Controllers\API\v1\EducatorController::class, 'store']);
         Route::post('/educator/assignments/{id}/evaluate', [\App\Http\Controllers\API\v1\EducatorController::class, 'evaluateTask']);
+        
+        // Manajemen Murid (Tambah, Edit, Hapus Satuan, Hapus Massal)
         Route::post('/educator/students', [\App\Http\Controllers\API\v1\EducatorController::class, 'storeStudent']);
+        Route::put('/educator/students/{id}', [\App\Http\Controllers\API\v1\EducatorController::class, 'updateStudent']);
+        Route::delete('/educator/students/{id}', [\App\Http\Controllers\API\v1\EducatorController::class, 'destroyStudent']);
+        Route::post('/educator/students/bulk-delete', [\App\Http\Controllers\API\v1\EducatorController::class, 'bulkDestroyStudents']);
     });
 });
