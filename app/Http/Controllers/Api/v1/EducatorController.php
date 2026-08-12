@@ -12,8 +12,8 @@ use Carbon\Carbon;
 class EducatorController extends Controller
 {
     /**
-     * Retrieve the educator's dashboard overview.
-     * Includes the list of students within the same institution and assignment history.
+     * Retrieve the educator dashboard overview
+     * Includes the list of students within the same institution and assignment history
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
@@ -22,10 +22,9 @@ class EducatorController extends Controller
     {
         $teacher = $request->user();
 
-        // Fetch students strictly bound to the educator's institution
         $students = User::where('role', 'student')
             ->where('institution', $teacher->institution)
-            ->select('id', 'name', 'email', 'institution as class') // FIXED: Added 'email'
+            ->select('id', 'name', 'email', 'institution as class')
             ->get()
             ->map(function($student) {
                 $words = explode(' ', $student->name);
@@ -34,7 +33,7 @@ class EducatorController extends Controller
                 return [
                     'id' => $student->id,
                     'name' => $student->name,
-                    'email' => $student->email, // FIXED: Now properly mapped to Frontend
+                    'email' => $student->email,
                     'class' => $student->class ?? 'Siswa',
                     'initials' => $initials
                 ];
@@ -42,7 +41,6 @@ class EducatorController extends Controller
 
         $assignments = [];
         
-        // Fetch assignment history including evaluation metrics
         if (\Illuminate\Support\Facades\Schema::hasTable('assignments')) {
             $assignments = DB::table('assignments')
                 ->join('users', 'assignments.student_id', '=', 'users.id')
@@ -75,7 +73,96 @@ class EducatorController extends Controller
     }
 
     /**
-     * Delegate a new learning module/assignment to a specific student.
+     * Retrieve the summary data for the educator dashboard
+     * Evaluates statistics active learning modules and pending evaluations cleanly
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function dashboardSummary(Request $request)
+    {
+        try {
+            $teacher = $request->user();
+
+            $activeStudents = User::where('role', 'student')
+                ->where('institution', $teacher->institution)
+                ->count();
+
+            $completedModules = 0;
+            $pendingEvaluations = 0;
+            $pendingStudents = [];
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('assignments')) {
+                $completedModules = DB::table('assignments')
+                    ->where('teacher_id', $teacher->id)
+                    ->whereIn('status', ['Selesai Dinilai', 'Selesai', 'Evaluated'])
+                    ->count();
+
+                $pendingEvaluations = DB::table('assignments')
+                    ->where('teacher_id', $teacher->id)
+                    ->whereIn('status', ['Menunggu Penilaian', 'Belum Dinilai', 'Pending', 'Belum Dikerjakan'])
+                    ->count();
+
+                $pendingStudents = DB::table('assignments')
+                    ->join('users', 'assignments.student_id', '=', 'users.id')
+                    ->where('assignments.teacher_id', $teacher->id)
+                    ->whereIn('assignments.status', ['Menunggu Penilaian', 'Belum Dinilai', 'Pending', 'Belum Dikerjakan'])
+                    ->select(
+                        'users.name',
+                        'users.email',
+                        'assignments.title as active_module',
+                        'assignments.stars_earned as accuracy',
+                        'assignments.status'
+                    )
+                    ->orderBy('assignments.created_at', 'desc')
+                    ->take(5)
+                    ->get()
+                    ->map(function ($student) {
+                        $student->accuracy = ($student->accuracy ?? 0) . '%';
+                        return $student;
+                    });
+            }
+
+            $activeModules = [
+                [
+                    'level' => 'Modul Dasar',
+                    'title' => 'Pengenalan Abjad SIBI',
+                    'tags' => ['Pemula', 'Wajib'],
+                    'desc' => 'Pantau tingkat akurasi siswa dalam memperagakan gestur tangan abjad A Z menggunakan deteksi sensor AI.',
+                    'level_key' => 'huruf'
+                ],
+                [
+                    'level' => 'Modul Menengah',
+                    'title' => 'Pembentukan Kosa Kata',
+                    'tags' => ['Menengah', 'Lanjutan'],
+                    'desc' => 'Evaluasi kemampuan siswa dalam merangkai gestur menjadi sebuah kosa kata yang memiliki makna.',
+                    'level_key' => 'kata'
+                ]
+            ];
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'stats' => [
+                        'active_students' => $activeStudents,
+                        'completed_modules' => $completedModules,
+                        'pending_evaluations' => $pendingEvaluations
+                    ],
+                    'active_modules' => $activeModules,
+                    'pending_students' => $pendingStudents
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Query Exception ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delegate a new learning module to a specific student
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
@@ -109,7 +196,7 @@ class EducatorController extends Controller
     }
 
     /**
-     * Register a new student credential bound to the educator's institution.
+     * Register a new student credential bound to the educator institution
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
@@ -147,7 +234,7 @@ class EducatorController extends Controller
     }
 
     /**
-     * Update an existing student's credentials.
+     * Update an existing student credentials
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
@@ -185,7 +272,7 @@ class EducatorController extends Controller
     }
 
     /**
-     * Remove a single student's access.
+     * Remove a single student access
      *
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
@@ -203,7 +290,7 @@ class EducatorController extends Controller
     }
 
     /**
-     * Perform a bulk deletion of selected students.
+     * Perform a bulk deletion of selected students
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
@@ -225,7 +312,7 @@ class EducatorController extends Controller
     }
 
     /**
-     * Evaluate an assignment and award stars to the student.
+     * Evaluate an assignment and award stars to the student
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
@@ -240,7 +327,6 @@ class EducatorController extends Controller
             'feedback' => 'nullable|string'
         ]);
 
-        // Verify ownership and existence
         $assignment = DB::table('assignments')->where('id', $id)->where('teacher_id', $teacher->id)->first();
 
         if (!$assignment) {
@@ -260,7 +346,6 @@ class EducatorController extends Controller
                 'updated_at' => now()
             ]);
 
-            // Increment the student's total stars based on evaluation
             User::where('id', $assignment->student_id)->increment('stars', $request->stars_earned);
 
             DB::commit();
@@ -273,6 +358,56 @@ class EducatorController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['status' => 'error', 'message' => 'Failed to save evaluation.'], 500);
+        }
+    }
+
+    /**
+     * Submit a live practical evaluation directly without prior assignment
+     * Records the performance and awards stars to the student instantly
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function liveEvaluate(Request $request)
+    {
+        $teacher = $request->user();
+
+        $request->validate([
+            'student_id' => 'required|exists:users,id',
+            'module_id' => 'required',
+            'stars_earned' => 'required|integer|min:1|max:50',
+            'accuracy' => 'required'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            DB::table('assignments')->insert([
+                'student_id' => $request->student_id,
+                'teacher_id' => $teacher->id,
+                'title' => 'Evaluasi Praktikum Kelas',
+                'target' => 'Tingkat Akurasi AI ' . $request->accuracy . ' Persen',
+                'notes' => 'Praktikum ini dievaluasi secara langsung melalui sistem sensor AI di kelas.',
+                'status' => 'Selesai Dinilai',
+                'stars_earned' => $request->stars_earned,
+                'feedback' => 'Telah dikonfirmasi oleh Pendidik.',
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            User::where('id', $request->student_id)->increment('stars', $request->stars_earned);
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Evaluasi praktikum berhasil direkam ke dalam peladen.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kegagalan sistem saat menyimpan evaluasi praktikum.'
+            ], 500);
         }
     }
 }

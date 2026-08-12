@@ -62,5 +62,7 @@ Route::prefix('v1')->group(function () {
         Route::put('/educator/students/{id}', [\App\Http\Controllers\API\v1\EducatorController::class, 'updateStudent']);
         Route::delete('/educator/students/{id}', [\App\Http\Controllers\API\v1\EducatorController::class, 'destroyStudent']);
         Route::post('/educator/students/bulk-delete', [\App\Http\Controllers\API\v1\EducatorController::class, 'bulkDestroyStudents']);
+        Route::get('/educator/dashboard-summary', [\App\Http\Controllers\API\v1\EducatorController::class, 'dashboardSummary']);
+        Route::post('/educator/live-evaluate', [\App\Http\Controllers\API\v1\EducatorController::class, 'liveEvaluate']);
     });
 });
