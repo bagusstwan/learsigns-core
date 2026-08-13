@@ -3,12 +3,9 @@
 namespace App\Filament\Pages;
 
 use Filament\Pages\Page;
-use App\Models\DatasetRecord;
 use App\Models\Module;
-use Filament\Notifications\Notification;
-use Livewire\Attributes\On;
 use Filament\Actions\Action;
-use Illuminate\Support\Facades\Response;
+use Livewire\Component;
 
 class DatasetRecorder extends Page
 {
@@ -20,67 +17,35 @@ class DatasetRecorder extends Page
 
     protected static string $view = 'filament.pages.dataset-recorder';
 
+    /** Mengatur aksi header halaman dan mengarahkannya melalui Livewire dispatch */
     protected function getHeaderActions(): array
     {
         return [
             Action::make('export_json')
-                ->label('Export Dataset (JSON)')
-                ->color('primary')
+                ->label('Ekspor Dataset JSON')
+                ->color('warning')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->action(function () {
-                    // Mengambil seluruh data dari tabel dataset_records
-                    $dataset = DatasetRecord::select('label', 'gesture_type', 'landmarks')->get();
-                    
-                    // Membuat nama file yang dinamis berdasarkan waktu unduh
-                    $fileName = 'edusync_dataset_' . now()->format('Y_m_d_His') . '.json';
-                    
-                    // Melakukan stream download agar server tidak berat saat data membesar
-                    return Response::streamDownload(function () use ($dataset) {
-                        echo json_encode($dataset, JSON_PRETTY_PRINT);
-                    }, $fileName, [
-                        'Content-Type' => 'application/json',
-                    ]);
-                }),
+                ->action(fn (Component $livewire) => $livewire->dispatch('trigger-export-json')),
+            
+            Action::make('clear_memory')
+                ->label('Bersihkan Memori')
+                ->color('gray')
+                ->icon('heroicon-o-trash')
+                ->action(fn (Component $livewire) => $livewire->dispatch('trigger-clear-memory')),
         ];
     }
 
-    /**
-     * Mengambil daftar target gestur dari tabel modul untuk dijadikan opsi label
-     */
+    /** Mengambil target gestur dan tipe tingkat pembelajaran masing masing dari basis data */
     protected function getViewData(): array
     {
+        $modulesData = Module::where('is_active', true)
+            ->select('level_type', 'target_gesture')
+            ->distinct()
+            ->get()
+            ->toArray();
+
         return [
-            'availableLabels' => Module::where('is_active', true)
-                ->pluck('target_gesture')
-                ->unique()
-                ->values()
-                ->toArray(),
+            'modulesDataJson' => json_encode($modulesData),
         ];
-    }
-
-    /**
-     * Fungsi ini akan dipanggil oleh JavaScript MediaPipe untuk menyimpan kordinat
-     */
-    #[On('save-dataset-record')]
-    public function saveDataset(string $label, string $type, array $landmarks)
-    {
-        try {
-            DatasetRecord::create([
-                'label' => $label,
-                'gesture_type' => $type,
-                'landmarks' => $landmarks,
-            ]);
-
-            // Notification::make()
-            //    ->title('Frame berhasil direkam!')
-            //    ->success()
-            //    ->send();
-
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Gagal menyimpan frame: ' . $e->getMessage())
-                ->danger()
-                ->send();
-        }
     }
 }

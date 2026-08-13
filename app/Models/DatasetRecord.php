@@ -16,7 +16,7 @@ class DatasetRecord extends Model
     ];
 
     /**
-     * Konversi otomatis JSON ke Array
+     * Automatic JSON to Array type casting definition
      */
     protected $casts = [
         'landmarks' => 'array',
