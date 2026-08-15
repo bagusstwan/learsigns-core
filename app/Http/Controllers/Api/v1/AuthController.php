@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
@@ -29,7 +30,7 @@ class AuthController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password), // Enkripsi Sandi Searah
+                'password' => Hash::make($request->password),
                 'role' => $request->role,
                 'phone' => $request->phone,
                 'institution' => $request->institution,
@@ -118,6 +119,59 @@ class AuthController extends Controller
                 'status' => 'error',
                 'message' => 'Gagal mengakhiri sesi.'
             ], 500);
+        }
+    }
+
+    /**
+     * INTEGRASI GOOGLE SSO (SINGLE SIGN-ON)
+     */
+
+    /**
+     * Menghasilkan URL Autentikasi Google
+     */
+    public function redirectToGoogle(Request $request)
+    {
+        $role = $request->query('role', 'student');
+        
+        return response()->json([
+            'url' => Socialite::driver('google')
+                        ->stateless()
+                        ->with(['state' => $role])
+                        ->redirect()
+                        ->getTargetUrl()
+        ]);
+    }
+
+    /**
+     * Memproses balikan data dari Google dan Menerbitkan Token
+     */
+    public function handleGoogleCallback(Request $request)
+    {
+        try {
+            $role = $request->input('state', 'student');
+            $googleUser = Socialite::driver('google')->stateless()->user();
+
+            $user = User::where('email', $googleUser->getEmail())->first();
+
+            // Auto-Register jika email belum ada di database
+            if (!$user) {
+                $user = User::create([
+                    'name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
+                    'password' => Hash::make(Str::random(24)),
+                    'role' => $role,
+                ]);
+            }
+
+            $token = $user->createToken('viba-auth-token')->plainTextToken;
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            
+            // Redirect kembali ke React sambil membawa Token
+            return redirect()->away($frontendUrl . '/auth/callback?token=' . $token);
+
+        } catch (\Exception $e) {
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            return redirect()->away($frontendUrl . '/login?error=GoogleAuthFailed');
         }
     }
 }
