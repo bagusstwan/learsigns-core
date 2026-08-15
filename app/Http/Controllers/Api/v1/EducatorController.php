@@ -106,21 +106,20 @@ class EducatorController extends Controller
                 $pendingStudents = DB::table('assignments')
                     ->join('users', 'assignments.student_id', '=', 'users.id')
                     ->where('assignments.teacher_id', $teacher->id)
-                    ->whereIn('assignments.status', ['Menunggu Penilaian', 'Belum Dinilai', 'Pending', 'Belum Dikerjakan'])
                     ->select(
+                        'assignments.id',
                         'users.name',
                         'users.email',
                         'assignments.title as active_module',
-                        'assignments.stars_earned as accuracy',
+                        'assignments.target', // Ditambahkan agar modal frontend bisa baca target akurasi
+                        'assignments.notes',  // Ditambahkan agar modal frontend bisa baca catatan pendidik
+                        'assignments.stars_earned', // Alias 'as accuracy' dihapus murni menjadi stars_earned
                         'assignments.status'
                     )
                     ->orderBy('assignments.created_at', 'desc')
-                    ->take(5)
-                    ->get()
-                    ->map(function ($student) {
-                        $student->accuracy = ($student->accuracy ?? 0) . '%';
-                        return $student;
-                    });
+                    ->take(20)
+                    ->get();
+                    // map() yang menambahkan '%' dihapus total agar tidak merusak format angka bintang
             }
 
             $activeModules = [
