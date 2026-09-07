@@ -1,7 +1,7 @@
-# Viba.ai Core API (learsigns-core)
+# Nusa.ai Core API (learsigns-core)
 
 ## Deskripsi Repositori
-`learsigns-core` adalah repositori infrastruktur backend utama untuk platform Viba.ai (AI-Powered Sign Language Platform). Dibangun menggunakan kerangka kerja Laravel, repositori ini bertindak sebagai pusat layanan data (RESTful API), penyedia otentikasi terpusat, dan panel administratif berskala enterprise. Sistem ini dirancang dengan prinsip pemisahan antarmuka (decoupled architecture) untuk mendukung skalabilitas dan keamanan data yang optimal.
+`learsigns-core` adalah repositori infrastruktur backend utama untuk platform Nusa.ai (AI-Powered Sign Language Platform). Dibangun menggunakan kerangka kerja Laravel, repositori ini bertindak sebagai pusat layanan data (RESTful API), penyedia otentikasi terpusat, dan panel administratif berskala enterprise. Sistem ini dirancang dengan prinsip pemisahan antarmuka (decoupled architecture) untuk mendukung skalabilitas dan keamanan data yang optimal.
 
 ## Tumpukan Teknologi (Tech Stack)
 *   **Framework:** Laravel (PHP)
