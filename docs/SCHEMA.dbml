@@ -1,34 +1,107 @@
-Project VibaAI {
+Project LearnSignsCore {
   database_type: 'MySQL'
-  Note: 'Database schema for AI-powered sign language platform.'
+  Note: 'Database schema for LearnSigns - AI-powered sign language learning platform.'
 }
 
 Table users {
-  id integer [primary key, increment]
-  name varchar [not null]
-  email varchar [unique, not null]
-  google_id varchar [unique, null]
-  role varchar [note: 'Enum: student, teacher, corporate']
+  id bigint [primary key, increment]
+  name varchar(255) [not null]
+  email varchar(255) [unique, not null]
+  email_verified_at timestamp [null]
+  password varchar(255) [not null]
+  remember_token varchar(100) [null]
+  role enum('student', 'teacher', 'corporate') [default: 'student']
+  phone varchar(255) [null]
+  institution varchar(255) [null]
   stars integer [default: 0]
   created_at timestamp
   updated_at timestamp
 }
 
 Table modules {
-  id integer [primary key, increment]
-  title varchar [not null]
-  description text
+  id bigint [primary key, increment]
+  title varchar(255) [not null]
+  level_type enum('abjad', 'kata', 'kalimat') [not null, note: 'Tingkat kesulitan modul']
+  target_gesture varchar(255) [not null, note: 'Kunci deteksi AI']
+  description text [null]
+  reference_image varchar(255) [null, note: 'Path gambar referensi gestur']
   is_active boolean [default: true]
   created_at timestamp
   updated_at timestamp
 }
 
 Table quests {
-  id integer [primary key, increment]
-  module_id integer [ref: > modules.id]
-  title varchar [not null]
-  reward_stars integer [default: 10]
+  id bigint [primary key, increment]
+  title varchar(255) [not null]
+  description text [not null]
+  target_gesture varchar(255) [not null, note: 'Target gestur yang harus dideteksi AI']
+  reward_stars integer [not null]
   is_active boolean [default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table student_progress {
+  id bigint [primary key, increment]
+  user_id bigint [not null, ref: > users.id]
+  module_id bigint [not null, ref: > modules.id]
+  accuracy integer [not null, note: 'Skor akurasi tertinggi (0-100)']
+  is_completed boolean [default: false, note: 'True jika akurasi >= 90%']
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (user_id, module_id) [unique]
+  }
+}
+
+Table user_quests {
+  id bigint [primary key, increment]
+  user_id bigint [not null, ref: > users.id]
+  quest_id bigint [not null, ref: > quests.id]
+  completed_at timestamp [default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (user_id, quest_id) [unique]
+  }
+}
+
+Table dataset_records {
+  id bigint [primary key, increment]
+  label varchar(255) [not null, note: 'Label gestur: A, B, HALO']
+  gesture_type enum('static', 'dynamic') [default: 'static']
+  landmarks json [not null, note: 'Array matriks koordinat MediaPipe']
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    label
+  }
+}
+
+Table assignments {
+  id bigint [primary key, increment]
+  student_id bigint [not null, ref: > users.id]
+  teacher_id bigint [not null, ref: > users.id]
+  title varchar(255) [not null]
+  target varchar(255) [not null]
+  notes text [null]
+  status varchar(255) [default: 'Belum Dikerjakan']
+  stars_earned integer [default: 0]
+  feedback text [null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table personal_access_tokens {
+  id bigint [primary key, increment]
+  tokenable_type varchar(255) [not null]
+  tokenable_id bigint [not null]
+  name text [not null]
+  token varchar(64) [unique]
+  abilities text [null]
+  last_used_at timestamp [null]
+  expires_at timestamp [null]
   created_at timestamp
   updated_at timestamp
 }
