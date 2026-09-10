@@ -36,9 +36,11 @@ GOOGLE_CLIENT_ID=kredensial_google_anda
 GOOGLE_CLIENT_SECRET=rahasia_google_anda
 GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 
-# URL Frontend React
+# URL Frontend React (digunakan oleh Google SSO callback untuk redirect)
 FRONTEND_URL=http://localhost:5173
 ```
+
+> **Catatan:** Variabel `FRONTEND_URL` digunakan oleh `AuthController::handleGoogleCallback()` untuk mengarahkan pengguna kembali ke klien React setelah autentikasi Google berhasil. Pastikan nilai ini sesuai dengan URL dev server frontend Vite.
 
 ### 4. Inisialisasi Sistem
 ```bash
@@ -57,23 +59,43 @@ Perintah ini menjalankan Laravel server, queue listener, dan Vite secara bersama
 **Opsi B:** Menjalankan secara terpisah:
 ```bash
 php artisan serve          # Backend API (port 8000)
-npm run dev                # Vite dev server
+npm run dev                # Vite dev server (aset admin)
 php artisan queue:listen   # Queue worker
 ```
 
 ### 6. Akses Aplikasi
 - **API Backend:** `http://localhost:8000/api/v1/`
-- **Panel Admin:** `http://localhost:8000/admin` (login menggunakan akun yang dibuat langsung di database)
+- **Panel Admin:** `http://localhost:8000/admin`
+- **Model AI:** `http://localhost:8000/serve-ai/{folder}/model.json`
+
+> **Akses Panel Admin:** FilamentPHP memerlukan akun pengguna untuk login. Saat ini tidak ada seeder khusus untuk admin. Buat akun admin secara manual melalui `php artisan tinker`:
+> ```php
+> \App\Models\User::create([
+>     'name' => 'Administrator',
+>     'email' => 'admin@learnsigns.test',
+>     'password' => bcrypt('password'),
+>     'role' => 'teacher',
+> ]);
+> ```
 
 ## Seeder Data
 Perintah `php artisan migrate --seed` akan menjalankan:
-- **QuestSeeder:** 23 quest dengan 3 kategori level (Abjad, Kosa Kata, Kalimat).
+- **QuestSeeder:** 23 quest dengan 3 kategori level (Abjad: 50-75 bintang, Kosa Kata: 100-125 bintang, Kalimat: 200-300 bintang).
 - **UserFactory:** Membuat user default `test@example.com`.
 
 > **Catatan:** ModuleSeeder tersedia tetapi tidak dijalankan secara default dari `DatabaseSeeder`. Jalankan secara manual jika diperlukan:
 > ```bash
 > php artisan db:seed --class=ModuleSeeder
 > ```
+> ModuleSeeder membuat 49 modul pembelajaran (Abjad A-Z, Kosa Kata, dan Kalimat).
+
+## Konfigurasi CORS
+
+File `config/cors.php` dikonfigurasi untuk mengizinkan komunikasi dengan frontend React:
+- **Allowed Origins:** `http://localhost:5173`
+- **Supports Credentials:** `true`
+
+Rute `/serve-ai` menggunakan header CORS manual (`Access-Control-Allow-Origin: *`) karena berada di luar konfigurasi CORS Laravel standar.
 
 ## Pengujian
 ```bash

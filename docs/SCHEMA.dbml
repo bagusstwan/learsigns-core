@@ -1,6 +1,9 @@
 Project LearnSignsCore {
   database_type: 'MySQL'
-  Note: 'Database schema for LearnSigns - AI-powered sign language learning platform.'
+  Note: '''
+    Database schema for LearnSigns (Nusa.ai) - AI-powered sign language learning platform.
+    Backend: Laravel 12.x | Frontend: React 18.x + Vite
+  '''
 }
 
 Table users {
@@ -12,8 +15,8 @@ Table users {
   remember_token varchar(100) [null]
   role enum('student', 'teacher', 'corporate') [default: 'student']
   phone varchar(255) [null]
-  institution varchar(255) [null]
-  stars integer [default: 0]
+  institution varchar(255) [null, note: 'Kunci pengelompokan siswa oleh pendidik']
+  stars integer [default: 0, note: 'Total akumulasi bintang gamifikasi']
   created_at timestamp
   updated_at timestamp
 }
@@ -35,7 +38,7 @@ Table quests {
   title varchar(255) [not null]
   description text [not null]
   target_gesture varchar(255) [not null, note: 'Target gestur yang harus dideteksi AI']
-  reward_stars integer [not null]
+  reward_stars integer [not null, note: 'Abjad: 50-75, Kata: 100-125, Kalimat: 200-300']
   is_active boolean [default: true]
   created_at timestamp
   updated_at timestamp
@@ -45,7 +48,7 @@ Table student_progress {
   id bigint [primary key, increment]
   user_id bigint [not null, ref: > users.id]
   module_id bigint [not null, ref: > modules.id]
-  accuracy integer [not null, note: 'Skor akurasi tertinggi (0-100)']
+  accuracy integer [not null, note: 'Skor akurasi tertinggi (0-100), mekanisme GREATEST']
   is_completed boolean [default: false, note: 'True jika akurasi >= 90%']
   created_at timestamp
   updated_at timestamp
@@ -70,7 +73,7 @@ Table dataset_records {
   id bigint [primary key, increment]
   label varchar(255) [not null, note: 'Label gestur: A, B, HALO']
   gesture_type enum('static', 'dynamic') [default: 'static']
-  landmarks json [not null, note: 'Array matriks koordinat MediaPipe']
+  landmarks json [not null, note: 'Array matriks koordinat MediaPipe (21 titik 3D per tangan)']
   created_at timestamp
   updated_at timestamp
 
@@ -79,29 +82,39 @@ Table dataset_records {
   }
 }
 
+// Catatan Arsitektural:
+// Tabel ini TIDAK memiliki Model Eloquent.
+// Seluruh operasi CRUD dilakukan via DB::table('assignments') di EducatorController.
+// Schema::hasTable('assignments') digunakan sebagai guard sebelum akses.
 Table assignments {
   id bigint [primary key, increment]
   student_id bigint [not null, ref: > users.id]
   teacher_id bigint [not null, ref: > users.id]
   title varchar(255) [not null]
-  target varchar(255) [not null]
+  target varchar(255) [not null, note: 'Target capaian tugas / gestur']
   notes text [null]
-  status varchar(255) [default: 'Belum Dikerjakan']
+  status varchar(255) [default: 'Belum Dikerjakan', note: 'Belum Dikerjakan | Menunggu Penilaian | Selesai Dinilai']
   stars_earned integer [default: 0]
   feedback text [null]
   created_at timestamp
   updated_at timestamp
+
+  Note: 'Tidak memiliki Model Eloquent. Diakses via DB::table() di EducatorController.'
 }
 
 Table personal_access_tokens {
   id bigint [primary key, increment]
   tokenable_type varchar(255) [not null]
   tokenable_id bigint [not null]
-  name text [not null]
+  name text [not null, note: 'Nama token: viba-auth-token']
   token varchar(64) [unique]
   abilities text [null]
   last_used_at timestamp [null]
   expires_at timestamp [null]
   created_at timestamp
   updated_at timestamp
+
+  indexes {
+    expires_at
+  }
 }
